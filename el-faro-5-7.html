@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>El Faro</title>
+<style>
+  :root{
+    --bg: #0b0d10;
+    --panel: #11151a;
+    --grid: #1c2129;
+    --teal: #26a69a;
+    --red: #ef5350;
+    --text: #c7ccd1;
+    --text-dim: #5d6470;
+    --accent: #f0b90b;
+  }
+  * { box-sizing: border-box; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family: 'SF Mono', 'Roboto Mono', monospace;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+  }
+  header{
+    padding:14px 16px 10px;
+    border-bottom:1px solid var(--grid);
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .symbol{
+    font-size:15px;
+    font-weight:700;
+    letter-spacing:0.5px;
+    color:var(--text);
+  }
+  .symbol span{ color:var(--text-dim); font-weight:400; margin-left:6px; font-size:11px; }
+  .legend{
+    display:flex;
+    gap:12px;
+    margin-top:4px;
+    font-size:10px;
+    color:var(--text-dim);
+  }
+  .legend-item{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    cursor:pointer;
+    user-select:none;
+    padding:2px 6px 2px 2px;
+    border-radius:4px;
+    transition: background 0.15s, opacity 0.15s;
+  }
+  .legend-item:hover{ background:#161b22; }
+  .legend-item.off{ opacity:0.4; }
+  .legend-dot{ width:8px; height:2px; border-radius:1px; }
+  .legend-val{ color:var(--text); font-weight:600; }
+  .tf-bar{
+    display:flex;
+    gap:4px;
+    margin-top:6px;
+  }
+  .tf-btn{
+    background:#161b22;
+    color:var(--text-dim);
+    border:1px solid var(--grid);
+    border-radius:4px;
+    padding:3px 8px;
+    font-size:10px;
+    font-family:inherit;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .tf-btn.active{
+    background:var(--accent);
+    color:#0b0d10;
+    border-color:var(--accent);
+  }
+  .price{
+    font-size:22px;
+    font-weight:700;
+    transition: color 0.3s;
+  }
+  .price.up{ color:var(--teal); }
+  .price.down{ color:var(--red); }
+  .meta{
+    font-size:10px;
+    color:var(--text-dim);
+    text-transform:uppercase;
+    letter-spacing:1px;
+  }
+  .chart-wrap{
+    position:relative;
+    flex:1;
+    min-height:340px;
+    min-width:0;
+  }
+  canvas{ display:block; width:100%; height:100%; touch-action:none; }
+  .compare-chart{
+    position:relative;
+    height:0;
+    overflow:hidden;
+    flex-shrink:0;
+    background:#0e1114;
+  }
+  .compare-chart.active{
+    height:120px;
+    border-top:1px solid var(--grid);
+  }
+  .compare-label{
+    position:absolute;
+    top:5px; left:10px;
+    font-size:9.5px;
+    color:var(--text-dim);
+    z-index:2;
+    letter-spacing:0.5px;
+  }
+  .compare-label b{ color:var(--text); }
+  .cmp-btn{
+    background:#161b22;
+    color:var(--text-dim);
+    border:1px solid var(--grid);
+    border-radius:4px;
+    padding:3px 8px;
+    font-size:10px;
+    font-family:inherit;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .cmp-btn.active{
+    background:var(--accent);
+    color:#0b0d10;
+    border-color:var(--accent);
+  }
+  .status{
+    position:absolute;
+    top:10px;
+    left:16px;
+    font-size:10px;
+    color:var(--text-dim);
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .dot{
+    width:6px; height:6px; border-radius:50%;
+    background:var(--teal);
+    animation: pulse 1.6s infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ opacity:1; }
+    50%{ opacity:0.3; }
+  }
+  footer{
+    padding:10px 16px 14px;
+    border-top:1px solid var(--grid);
+    font-size:10px;
+    color:var(--text-dim);
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  footer b{ color:var(--accent); font-weight:600; }
+
+  /* ---- watchlist lateral ---- */
+  .main-row{
+    flex:1;
+    display:flex;
+    min-height:340px;
+    overflow:hidden;
+  }
+  .watchlist{
+    width:132px;
+    flex-shrink:0;
+    border-left:1px solid var(--grid);
+    overflow-y:auto;
+    background:var(--panel);
+  }
+  .wl-item{
+    padding:8px 10px;
+    border-bottom:1px solid var(--grid);
+    cursor:pointer;
+    user-select:none;
+  }
+  .wl-item:hover{ background:#161b22; }
+  .wl-item.active{ background:#1c2129; border-left:2px solid var(--accent); }
+  .wl-sym{ font-size:10.5px; font-weight:700; color:var(--text); }
+  .wl-price{ font-size:10px; margin-top:2px; color:var(--text-dim); }
+  .wl-chg{ font-size:9.5px; margin-top:1px; font-weight:600; }
+  .wl-chg.up{ color:var(--teal); }
+  .wl-chg.down{ color:var(--red); }
+  @media (max-width: 640px){
+    .watchlist{ width:96px; }
+    .wl-sym{ font-size:9.5px; }
+    .wl-price{ font-size:9px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div style="font-size:9px; letter-spacing:2px; color:var(--accent); font-weight:700; margin-bottom:2px;">⚓ EL FARO</div>
+    <div class="symbol"><span id="symbolLabel">BTCUSDT</span> <span>· <span id="exchangeLabel">BINANCE SPOT</span> · <span id="tfLabel">1H</span></span></div>
+    <div class="legend" id="legend"></div>
+    <div style="display:flex; gap:4px; align-items:center;">
+      <div class="tf-bar" id="tfBar"></div>
+      <button class="cmp-btn" id="compareBtn">📊 comparar</button>
+    </div>
+  </div>
+  <div style="text-align:right;">
+    <div class="price" id="price">—</div>
+    <div class="meta" id="change">cargando...</div>
+  </div>
+</header>
+
+<div class="main-row">
+  <div class="chart-wrap">
+    <div class="primary-chart">
+      <div class="status">
+        <div class="dot"></div>
+        <span>arrastrá para mover · pellizcá/rueda = zoom horizontal · arrastrá sobre los precios (derecha) = zoom vertical · doble toque ahí = reset · 📏 Medir (arriba) para medir</span>
+        <button id="clearMeasureBtn" style="display:none; margin-left:4px; background:#1c2129; color:#c7ccd1; border:1px solid #2a313c; border-radius:4px; padding:2px 8px; font-size:10px; font-family:inherit; cursor:pointer;">✕ medición</button>
+        <button id="liveBtn" style="display:none; margin-left:4px; background:#1c2129; color:var(--accent); border:1px solid var(--accent); border-radius:4px; padding:2px 8px; font-size:10px; font-family:inherit; cursor:pointer;">🔴 volver al live</button>
+      </div>
+      <canvas id="chart"></canvas>
+    </div>
+  </div>
+  <div class="watchlist" id="watchlist"></div>
+</div>
+
+<div class="compare-chart" id="compareChartWrap">
+  <div class="compare-label">comparando: <b id="compareSymbolLabel">—</b></div>
+  <canvas id="chartCompare"></canvas>
+</div>
+
+<footer>
+  <span id="smtPanel">SMT PAXG/XAU: cargando...</span>
+  <span>Hull MA 15/35 (tocá el nombre) · XAUUSD vía Twelve Data</span>
+  <span>experimento — <b>Pablo</b></span>
+</footer>
+
+<script>
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+const priceEl = document.getElementById('price');
+const changeEl = document.getElementById('change');
+
+// ---- Twelve Data: API key personal de Pablo (plan gratuito, 800 requests/día) ----
+const TWELVE_DATA_KEY = 'c88bdd5f85fe4b43a3a368bdbdc4484e';
+// mapea las temporalidades de El Faro al formato que espera Twelve Data
+const TD_INTERVAL_MAP = { '5m':'5min', '15m':'15min', '1h':'1h', '4h':'4h', '1d':'1day' };
+
+// ---- WATCHLIST: agregá o sacá símbolos acá. "label" es lo que se ve. ----
+// source:'binance'    -> "symbol" es el par de Binance (ej. BTCUSDT)
+// source:'twelvedata' -> "symbol" es el par de Twelve Data (ej. XAU/USD)
+// PAXGUSDT = oro tokenizado (sigue el precio del oro spot casi 1:1)
+const SYMBOLS = [
+  { symbol:'BTCUSDT', label:'BTC', source:'binance' },
+  { symbol:'ETHUSDT', label:'ETH', source:'binance' },
+  { symbol:'SOLUSDT', label:'SOL', source:'binance' },
+  { symbol:'PAXGUSDT', label:'ORO (PAXG)', source:'binance' },
+  { symbol:'XAU/USD', label:'XAUUSD', source:'twelvedata' },
+  { symbol:'EUR/USD', label:'EURUSD', source:'twelvedata' },
+  { symbol:'GBP/USD', label:'GBPUSD', source:'twelvedata' }
+];
+let selectedSymbol = SYMBOLS[0].symbol;
+let watchlistData = {}; // cache de precio/cambio 24h por símbolo
+
+let candles = [];
+let hma15 = [];
+let hma35 = [];
+let currentInterval = '1h';
+const timeframes = [
+  { label:'5m',  value:'5m'  },
+  { label:'15m', value:'15m' },
+  { label:'1H',  value:'1h'  },
+  { label:'4H',  value:'4h'  },
+  { label:'1D',  value:'1d'  }
+];
+const legendEl = document.getElementById('legend');
+
+// estado de visibilidad de cada línea
+const visibility = {
+  hma15: true,
+  hma35: true
+};
+
+// guarda el último layout del canvas para poder convertir píxeles -> precio/vela
+let lastLayout = null;
+
+// estado de la herramienta de medición (precio y tiempo entre dos puntos)
+const measure = { active:false, has:false, moved:false, startX:0, startY:0, curX:0, curY:0 };
+const DRAG_THRESHOLD = 8; // px — por debajo de esto se considera "toque", no arrastre
+let measureMode = false; // apagado por defecto, se activa con el switch del header
+
+// estado de zoom/pan: qué ventana de velas se está mostrando
+const view = { count: 100, offset: 0 }; // count = velas visibles, offset = velas hacia atrás desde la más reciente
+const MIN_COUNT = 15;
+const MAX_RIGHT_GAP = 60; // cuántas "velas vacías" de espacio extra se pueden abrir a la derecha del live
+let yPanFrac = 0; // desplazamiento vertical manual (arriba/abajo), en fracción del rango de precios visible
+
+// minutos que dura cada vela según la temporalidad (para la herramienta de medición)
+const intervalMinutes = { '5m':5, '15m':15, '1h':60, '4h':240, '1d':1440 };
+
+// estado genérico del puntero (dedo/mouse) para distinguir "medir" de "mover el gráfico"
+const pointer = { dragging:false, mode:null, startX:0, startY:0, startOffset:0 };
+const pinch = { active:false, startDist:0, startCount:0 };
+
+// zoom vertical (eje de precio): factor 1 = automático. Se ajusta arrastrando sobre la franja de precios.
+const yZoom = { factor: 1, startY: 0, startFactor: 1 };
+const Y_ZOOM_MIN = 0.15, Y_ZOOM_MAX = 6;
+
+function wma(values, length){
+  const result = new Array(values.length).fill(NaN);
+  const denom = length * (length + 1) / 2;
+  for(let i = length - 1; i < values.length; i++){
+    let sum = 0;
+    let valid = true;
+    for(let k = 0; k < length; k++){
+      const v = values[i - length + 1 + k];
+      if(v === undefined || isNaN(v)){ valid = false; break; }
+      sum += v * (k + 1);
+    }
+    if(valid) result[i] = sum / denom;
+  }
+  return result;
+}
+
+function hma(values, length){
+  const halfLen = Math.max(1, Math.round(length / 2));
+  const sqrtLen = Math.max(1, Math.round(Math.sqrt(length)));
+  const wmaHalf = wma(values, halfLen);
+  const wmaFull = wma(values, length);
+  const raw = values.map((_, i) => {
+    if(isNaN(wmaHalf[i]) || isNaN(wmaFull[i])) return NaN;
+    return 2 * wmaHalf[i] - wmaFull[i];
+  });
+  return wma(raw, sqrtLen);
+}
+
+function renderTfBar(){
+  const bar = document.getElementById('tfBar');
+  bar.innerHTML = timeframes.map(tf =>
+    `<button class="tf-btn ${tf.value === currentInterval ? 'active' : ''}" data-tf="${tf.value}">${tf.label}</button>`
+  ).join('');
+  bar.querySelectorAll('.tf-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentInterval = btn.dataset.tf;
+      document.getElementById('tfLabel').textContent = btn.textContent;
+      view.count = 100;
+      view.offset = 0;
+      renderTfBar();
+      fetchCandles();
+    });
+  });
+}
+
+function toggleVisibility(key){
+  visibility[key] = !visibility[key];
+  updateLegend();
+  draw();
+}
+
+function updateLegend(){
+  if(candles.length === 0) return;
+  const h15 = hma15[hma15.length - 1];
+  const h35 = hma35[hma35.length - 1];
+  const fmt = v => isNaN(v) ? '—' : v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+  legendEl.innerHTML = `
+    <div class="legend-item ${visibility.hma15 ? '' : 'off'}" id="legend-hma15">
+      <div class="legend-dot" style="background:#f0b90b"></div>HMA 15 <span class="legend-val">${fmt(h15)}</span>
+    </div>
+    <div class="legend-item ${visibility.hma35 ? '' : 'off'}" id="legend-hma35">
+      <div class="legend-dot" style="background:#9c6ade"></div>HMA 35 <span class="legend-val">${fmt(h35)}</span>
+    </div>
+    <div class="legend-item ${measureMode ? '' : 'off'}" id="legend-measure">
+      <div class="legend-dot" style="background:#5d6470"></div>📏 Medir <span class="legend-val">${measureMode ? 'ON' : 'OFF'}</span>
+    </div>
+  `;
+  document.getElementById('legend-hma15').addEventListener('click', () => toggleVisibility('hma15'));
+  document.getElementById('legend-hma35').addEventListener('click', () => toggleVisibility('hma35'));
+  document.getElementById('legend-measure').addEventListener('click', toggleMeasureMode);
+}
+
+function resize(){
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * devicePixelRatio;
+  canvas.height = rect.height * devicePixelRatio;
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  draw();
+}
+window.addEventListener('resize', resize);
+
+let lastTdCandleFetch = 0; // timestamp del último pedido a Twelve Data (respeta el límite de 8 req/min)
+
+function currentSource(){
+  const sym = SYMBOLS.find(s => s.symbol === selectedSymbol);
+  return sym ? sym.source : 'binance';
+}
+
+// helper compartido: trae velas de Binance o Twelve Data según la fuente
+async function fetchCandlesRaw(symbolStr, source, interval){
+  if(source === 'twelvedata'){
+    const tdInterval = TD_INTERVAL_MAP[interval] || '1h';
+    const res = await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbolStr)}&interval=${tdInterval}&outputsize=500&apikey=${TWELVE_DATA_KEY}`);
+    const data = await res.json();
+    if(!data.values) throw new Error(data.message || 'Twelve Data sin datos');
+    return data.values.slice().reverse().map(d => ({
+      open: parseFloat(d.open), high: parseFloat(d.high), low: parseFloat(d.low), close: parseFloat(d.close)
+    }));
+  }
+  const res = await fetch(`https://data-api.binance.vision/api/v3/klines?symbol=${symbolStr}&interval=${interval}&limit=500`);
+  const data = await res.json();
+  return data.map(d => ({
+    open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4])
+  }));
+}
+
+async function fetchCandles(){
+  const source = currentSource();
+  if(source === 'twelvedata'){
+    const now = Date.now();
+    if(candles.length && now - lastTdCandleFetch < 60000) return; // Twelve Data se refresca cada 60s, no cada 15s
+    lastTdCandleFetch = now;
+  }
+  try{
+    candles = await fetchCandlesRaw(selectedSymbol, source, currentInterval);
+    const closes = candles.map(c => c.close);
+    hma15 = hma(closes, 15);
+    hma35 = hma(closes, 35);
+    updateHeader();
+    updateLegend();
+    draw();
+  }catch(e){
+    changeEl.textContent = 'error de conexión, reintentando...';
+  }
+}
+
+// ---- panel de comparación (2 gráficos simultáneos) ----
+const chartCompare = document.getElementById('chartCompare');
+const ctxCompare = chartCompare.getContext('2d');
+let compareMode = false;
+let compareSymbol = null;
+let compareCandles = [];
+let lastTdCompareFetch = 0;
+
+function pickCompareSymbol(sym){
+  // por defecto, si mirás PAXG te compara con XAUUSD y viceversa; para el resto, siempre XAUUSD
+  if(sym === 'PAXGUSDT') return 'XAU/USD';
+  if(sym === 'XAU/USD') return 'PAXGUSDT';
+  return 'XAU/USD';
+}
+
+function resizeCompare(){
+  if(!compareMode) return;
+  const rect = chartCompare.parentElement.getBoundingClientRect();
+  chartCompare.width = rect.width * devicePixelRatio;
+  chartCompare.height = rect.height * devicePixelRatio;
+  chartCompare.style.width = rect.width + 'px';
+  chartCompare.style.height = rect.height + 'px';
+  ctxCompare.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  drawCompare();
+}
+
+function drawCompare(){
+  const w = chartCompare.width / devicePixelRatio;
+  const h = chartCompare.height / devicePixelRatio;
+  ctxCompare.clearRect(0,0,w,h);
+  if(compareCandles.length < 2){
+    ctxCompare.fillStyle = '#5d6470';
+    ctxCompare.font = '10px monospace';
+    ctxCompare.fillText('cargando datos...', 12, h/2);
+    return;
+  }
+  const pad = {top:20, bottom:10, left:8, right:56};
+  const innerW = w - pad.left - pad.right;
+  const innerH = h - pad.top - pad.bottom;
+  const closes = compareCandles.map(c => c.close);
+  const max = Math.max(...closes);
+  const min = Math.min(...closes);
+  const range = (max - min) || 1;
+  const n = closes.length;
+
+  ctxCompare.beginPath();
+  closes.forEach((c, i) => {
+    const x = pad.left + (i/(n-1)) * innerW;
+    const y = pad.top + innerH - ((c-min)/range) * innerH;
+    if(i === 0) ctxCompare.moveTo(x,y); else ctxCompare.lineTo(x,y);
+  });
+  const up = closes[closes.length-1] >= closes[0];
+  ctxCompare.strokeStyle = up ? '#26a69a' : '#ef5350';
+  ctxCompare.lineWidth = 1.5;
+  ctxCompare.stroke();
+
+  ctxCompare.font = '9px monospace';
+  ctxCompare.fillStyle = '#5d6470';
+  ctxCompare.fillText(max.toLocaleString('en-US',{maximumFractionDigits:2}), w - pad.right + 4, pad.top + 4);
+  ctxCompare.fillText(min.toLocaleString('en-US',{maximumFractionDigits:2}), w - pad.right + 4, pad.top + innerH);
+  ctxCompare.fillStyle = up ? '#26a69a' : '#ef5350';
+  ctxCompare.font = 'bold 10px monospace';
+  ctxCompare.fillText('$'+closes[closes.length-1].toLocaleString('en-US',{maximumFractionDigits:2}), w - pad.right + 4, pad.top + innerH/2 + 3);
+}
+
+async function fetchCompareCandles(){
+  if(!compareMode || !compareSymbol) return;
+  const symObj = SYMBOLS.find(s => s.symbol === compareSymbol);
+  const source = symObj ? symObj.source : 'binance';
+  if(source === 'twelvedata'){
+    const now = Date.now();
+    if(compareCandles.length && now - lastTdCompareFetch < 60000) return;
+    lastTdCompareFetch = now;
+  }
+  try{
+    compareCandles = await fetchCandlesRaw(compareSymbol, source, currentInterval);
+    drawCompare();
+  }catch(e){
+    ctxCompare.clearRect(0,0, chartCompare.width/devicePixelRatio, chartCompare.height/devicePixelRatio);
+    ctxCompare.fillStyle = '#ef5350';
+    ctxCompare.font = '10px monospace';
+    ctxCompare.fillText('error al cargar ' + compareSymbol, 12, (chartCompare.height/devicePixelRatio)/2);
+  }
+}
+
+function updateCompareTarget(){
+  if(!compareMode) return;
+  compareSymbol = pickCompareSymbol(selectedSymbol);
+  const lbl = SYMBOLS.find(s => s.symbol === compareSymbol);
+  document.getElementById('compareSymbolLabel').textContent = lbl ? lbl.label : compareSymbol;
+  compareCandles = [];
+  lastTdCompareFetch = 0;
+  fetchCompareCandles();
+}
+
+function toggleCompareMode(){
+  compareMode = !compareMode;
+  const btn = document.getElementById('compareBtn');
+  const wrap = document.getElementById('compareChartWrap');
+  btn.classList.toggle('active', compareMode);
+  wrap.classList.toggle('active', compareMode);
+  if(compareMode){
+    updateCompareTarget();
+    requestAnimationFrame(() => requestAnimationFrame(resizeCompare));
+  }
+}
+document.getElementById('compareBtn').addEventListener('click', toggleCompareMode);
+window.addEventListener('resize', resizeCompare);
+setInterval(fetchCompareCandles, 15000);
+
+function selectSymbol(sym){
+  if(sym === selectedSymbol) return;
+  selectedSymbol = sym;
+  document.getElementById('symbolLabel').textContent = sym;
+  const symObj = SYMBOLS.find(s => s.symbol === sym);
+  document.getElementById('exchangeLabel').textContent = (symObj && symObj.source === 'twelvedata') ? 'TWELVE DATA' : 'BINANCE SPOT';
+  view.count = 100;
+  view.offset = 0;
+  lastTdCandleFetch = 0; // forzar fetch inmediato al cambiar de símbolo, aunque sea Twelve Data
+  renderWatchlist();
+  fetchCandles();
+  updateCompareTarget();
+}
+
+async function fetchWatchlist(){
+  try{
+    const binanceSymbols = SYMBOLS.filter(s => s.source !== 'twelvedata').map(s => s.symbol);
+    if(!binanceSymbols.length) return;
+    const symbolsParam = encodeURIComponent(JSON.stringify(binanceSymbols));
+    const res = await fetch(`https://data-api.binance.vision/api/v3/ticker/24hr?symbols=${symbolsParam}`);
+    const data = await res.json();
+    data.forEach(d => {
+      watchlistData[d.symbol] = {
+        price: parseFloat(d.lastPrice),
+        change: parseFloat(d.priceChangePercent)
+      };
+    });
+    renderWatchlist();
+  }catch(e){
+    // si falla, dejamos los últimos valores que ya teníamos en cache
+  }
+}
+
+async function fetchTwelveDataWatchlist(){
+  const tdSymbols = SYMBOLS.filter(s => s.source === 'twelvedata');
+  for(const s of tdSymbols){
+    try{
+      const res = await fetch(`https://api.twelvedata.com/quote?symbol=${encodeURIComponent(s.symbol)}&apikey=${TWELVE_DATA_KEY}`);
+      const data = await res.json();
+      if(data.close){
+        watchlistData[s.symbol] = {
+          price: parseFloat(data.close),
+          change: parseFloat(data.percent_change)
+        };
+      }
+    }catch(e){
+      // si falla, dejamos el último valor en cache
+    }
+  }
+  renderWatchlist();
+}
+
+const SMT_DIVERGENCE_THRESHOLD = 0.35; // % de diferencia entre ambos cambios para marcar divergencia
+
+function updateSmtPanel(){
+  const el = document.getElementById('smtPanel');
+  if(!el) return;
+  const paxg = watchlistData['PAXGUSDT'];
+  const xau = watchlistData['XAU/USD'];
+  if(!paxg || !xau){ el.textContent = 'SMT PAXG/XAU: esperando datos...'; return; }
+  const a = paxg.change, b = xau.change;
+  const diff = Math.abs(a - b);
+  const signsDiffer = (a >= 0) !== (b >= 0);
+  const isDivergence = signsDiffer || diff >= SMT_DIVERGENCE_THRESHOLD;
+  const fmt = v => (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
+  el.innerHTML = `SMT PAXG ${fmt(a)} / XAU ${fmt(b)} ${isDivergence ? '<b style="color:var(--accent)">⚡ divergencia</b>' : '· alineados'}`;
+}
+
+function renderWatchlist(){
+  const el = document.getElementById('watchlist');
+  el.innerHTML = SYMBOLS.map(s => {
+    const d = watchlistData[s.symbol];
+    const priceTxt = d ? d.price.toLocaleString('en-US', {maximumFractionDigits: d.price < 10 ? 4 : 2}) : '—';
+    const chgTxt = d ? (d.change >= 0 ? '+' : '') + d.change.toFixed(2) + '%' : '—';
+    const chgClass = d ? (d.change >= 0 ? 'up' : 'down') : '';
+    const activeClass = s.symbol === selectedSymbol ? 'active' : '';
+    return `
+      <div class="wl-item ${activeClass}" data-sym="${s.symbol}">
+        <div class="wl-sym">${s.label}</div>
+        <div class="wl-price">$${priceTxt}</div>
+        <div class="wl-chg ${chgClass}">${chgTxt}</div>
+      </div>`;
+  }).join('');
+  el.querySelectorAll('.wl-item').forEach(item => {
+    item.addEventListener('click', () => selectSymbol(item.dataset.sym));
+  });
+  updateSmtPanel();
+}
+
+function updateHeader(){
+  if(candles.length < 2) return;
+  const last = candles[candles.length-1];
+  const prev = candles[candles.length-2];
+  const change = ((last.close - prev.close) / prev.close) * 100;
+  priceEl.textContent = '$' + last.close.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  priceEl.className = 'price ' + (change >= 0 ? 'up' : 'down');
+  changeEl.textContent = (change >= 0 ? '▲ +' : '▼ ') + change.toFixed(2) + '% última vela ' + document.getElementById('tfLabel').textContent;
+}
+
+function getViewRange(){
+  const total = candles.length;
+  const gap = Math.max(0, -view.offset); // velas "de hueco" a la derecha del live, cuando offset < 0
+  const count = Math.max(MIN_COUNT, Math.min(view.count, total || MIN_COUNT));
+  const histOffset = Math.max(0, view.offset);
+  let end = total - histOffset;
+  end = Math.max(count, Math.min(total, end));
+  const visibleCandleCount = Math.max(1, count - gap);
+  const start = Math.max(0, end - visibleCandleCount);
+  return { start, end, gap };
+}
+
+function draw(){
+  const w = canvas.width / devicePixelRatio;
+  const h = canvas.height / devicePixelRatio;
+  ctx.clearRect(0,0,w,h);
+  if(candles.length === 0) return;
+
+  const { start, end, gap } = getViewRange();
+  const visCandles = candles.slice(start, end);
+  const visHma15 = hma15.slice(start, end);
+  const visHma35 = hma35.slice(start, end);
+
+  const pad = {top:24, bottom:24, left:8, right:60};
+  const innerW = w - pad.left - pad.right;
+  const innerH = h - pad.top - pad.bottom;
+
+  const highs = visCandles.map(c=>c.high);
+  const lows = visCandles.map(c=>c.low);
+  // el rango del eje solo considera las HMA que están visibles
+  const visibleHmaVals = [
+    ...(visibility.hma15 ? visHma15 : []),
+    ...(visibility.hma35 ? visHma35 : [])
+  ].filter(v => !isNaN(v));
+  const autoMax = Math.max(...highs, ...visibleHmaVals);
+  const autoMin = Math.min(...lows, ...visibleHmaVals);
+  const halfRange = ((autoMax - autoMin) || 1) / 2 * yZoom.factor;
+  const midPrice = (autoMax + autoMin) / 2 + yPanFrac * (halfRange * 2);
+  const max = midPrice + halfRange;
+  const min = midPrice - halfRange;
+  const range = (max - min) || 1;
+
+  const n = visCandles.length;
+  const RIGHT_MARGIN_SLOTS = 6 + gap; // espacio vacío a la derecha: base + lo que el usuario abrió a mano
+  const candleW = innerW / (n + RIGHT_MARGIN_SLOTS);
+  const bodyW = Math.max(candleW * 0.75, 2);
+  const wickW = Math.max(candleW * 0.14, 1.8);
+
+  lastLayout = { pad, innerW, innerH, candleW, min, max, start };
+
+  // grid lines
+  ctx.strokeStyle = '#1c2129';
+  ctx.lineWidth = 1;
+  ctx.font = '10px monospace';
+  ctx.fillStyle = '#5d6470';
+  for(let i=0; i<=4; i++){
+    const y = pad.top + (innerH * i/4);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(w - pad.right, y);
+    ctx.stroke();
+    const val = max - (range * i/4);
+    ctx.fillText(val.toFixed(0), w - pad.right + 6, y + 3);
+  }
+
+  visCandles.forEach((c, i) => {
+    const x = pad.left + i * candleW + candleW/2;
+    const yOpen = pad.top + innerH - ((c.open - min)/range) * innerH;
+    const yClose = pad.top + innerH - ((c.close - min)/range) * innerH;
+    const yHigh = pad.top + innerH - ((c.high - min)/range) * innerH;
+    const yLow = pad.top + innerH - ((c.low - min)/range) * innerH;
+
+    const up = c.close >= c.open;
+    ctx.strokeStyle = up ? '#26a69a' : '#ef5350';
+    ctx.fillStyle = up ? '#26a69a' : '#ef5350';
+
+    // wick
+    ctx.lineWidth = wickW;
+    ctx.beginPath();
+    ctx.moveTo(x, yHigh);
+    ctx.lineTo(x, yLow);
+    ctx.stroke();
+
+    // body
+    const bodyTop = Math.min(yOpen, yClose);
+    const bodyH = Math.max(Math.abs(yClose - yOpen), 1);
+    ctx.fillRect(x - bodyW/2, bodyTop, bodyW, bodyH);
+  });
+
+  function drawHmaLine(arr, color){
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    let started = false;
+    arr.forEach((v, i) => {
+      if(isNaN(v)) return;
+      const x = pad.left + i * candleW + candleW/2;
+      const y = pad.top + innerH - ((v - min)/range) * innerH;
+      if(!started){ ctx.moveTo(x, y); started = true; }
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  }
+  if(visibility.hma15) drawHmaLine(visHma15, '#f0b90b');
+  if(visibility.hma35) drawHmaLine(visHma35, '#9c6ade');
+
+  drawMeasurement();
+}
+
+// convierte una posición en píxeles del canvas a {precio, índice de vela}
+function pixelToData(x, y){
+  if(!lastLayout) return null;
+  const { pad, innerW, innerH, candleW, min, max, start } = lastLayout;
+  const price = max - ((y - pad.top) / innerH) * (max - min);
+  let relIdx = Math.round((x - pad.left - candleW/2) / candleW);
+  let idx = start + relIdx;
+  idx = Math.max(0, Math.min(candles.length - 1, idx));
+  return { price, idx };
+}
+
+function drawMeasurement(){
+  if(!measure.has) return;
+  const startData = pixelToData(measure.startX, measure.startY);
+  const endData = pixelToData(measure.curX, measure.curY);
+  if(!startData || !endData) return;
+
+  const priceDiff = endData.price - startData.price;
+  const pctDiff = (priceDiff / startData.price) * 100;
+  const barsDiff = endData.idx - startData.idx;
+  const up = priceDiff >= 0;
+  const color = up ? 'rgba(38,166,154,0.95)' : 'rgba(239,83,80,0.95)';
+  const fill = up ? 'rgba(38,166,154,0.12)' : 'rgba(239,83,80,0.12)';
+
+  const rx = Math.min(measure.startX, measure.curX);
+  const ry = Math.min(measure.startY, measure.curY);
+  const rw = Math.abs(measure.curX - measure.startX);
+  const rh = Math.abs(measure.curY - measure.startY);
+
+  ctx.fillStyle = fill;
+  ctx.fillRect(rx, ry, rw, rh);
+  ctx.strokeStyle = color;
+  ctx.setLineDash([4,3]);
+  ctx.lineWidth = 1;
+  ctx.strokeRect(rx, ry, rw, rh);
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  ctx.moveTo(measure.startX, measure.startY);
+  ctx.lineTo(measure.curX, measure.curY);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // punto de inicio
+  ctx.beginPath();
+  ctx.arc(measure.startX, measure.startY, 3, 0, Math.PI*2);
+  ctx.fillStyle = color;
+  ctx.fill();
+
+  const hoursAbs = Math.abs(barsDiff); // cantidad de velas entre los dos puntos
+  const minsPerBar = intervalMinutes[currentInterval] || 60;
+  const totalMinutes = hoursAbs * minsPerBar;
+  const days = Math.floor(totalMinutes / 1440);
+  const hoursPart = Math.floor((totalMinutes % 1440) / 60);
+  const minsPart = totalMinutes % 60;
+  let timeLabel;
+  if(days > 0) timeLabel = `${days}d ${hoursPart}h`;
+  else if(hoursPart > 0) timeLabel = `${hoursPart}h ${minsPart}m`;
+  else timeLabel = `${minsPart}m`;
+  const label1 = `${up ? '▲' : '▼'} ${Math.abs(priceDiff).toFixed(2)} USD (${pctDiff >= 0 ? '+' : ''}${pctDiff.toFixed(2)}%)`;
+  const label2 = `${hoursAbs} velas · ${timeLabel}`;
+
+  ctx.font = 'bold 11px monospace';
+  const textW = Math.max(ctx.measureText(label1).width, ctx.measureText(label2).width) + 16;
+  let boxX = measure.curX + 10;
+  let boxY = measure.curY - 38;
+  const w = canvas.width / devicePixelRatio;
+  if(boxX + textW > w) boxX = measure.curX - textW - 10;
+  if(boxY < 0) boxY = measure.curY + 10;
+
+  ctx.fillStyle = '#11151a';
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.fillRect(boxX, boxY, textW, 36);
+  ctx.strokeRect(boxX, boxY, textW, 36);
+
+  ctx.fillStyle = color;
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText(label1, boxX + 8, boxY + 15);
+  ctx.fillStyle = '#c7ccd1';
+  ctx.font = '10px monospace';
+  ctx.fillText(label2, boxX + 8, boxY + 29);
+}
+
+function getCanvasPos(e){
+  const rect = canvas.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x: clientX - rect.left, y: clientY - rect.top };
+}
+
+function updateClearBtn(){
+  const btn = document.getElementById('clearMeasureBtn');
+  if(btn) btn.style.display = measure.has ? 'inline-flex' : 'none';
+}
+
+function toggleMeasureMode(){
+  measureMode = !measureMode;
+  if(!measureMode){
+    // al apagarlo, borramos cualquier medición que hubiera quedado dibujada
+    measure.has = false;
+    measure.active = false;
+    measure.moved = false;
+    draw();
+    updateClearBtn();
+  }
+  updateLegend();
+}
+
+function clearMeasure(){
+  measure.has = false;
+  measure.active = false;
+  measure.moved = false;
+  draw();
+  updateClearBtn();
+}
+
+function updateLiveBtn(){
+  const btn = document.getElementById('liveBtn');
+  if(btn) btn.style.display = view.offset !== 0 ? 'inline-flex' : 'none';
+}
+
+function goLive(){
+  view.offset = 0;
+  yPanFrac = 0;
+  draw();
+  updateLiveBtn();
+}
+
+function clampView(){
+  const total = candles.length;
+  const maxOffset = Math.max(0, total - view.count);
+  if(view.offset > maxOffset) view.offset = maxOffset;
+  if(view.offset < -MAX_RIGHT_GAP) view.offset = -MAX_RIGHT_GAP;
+}
+
+// ----- puntero único (mouse o un dedo): mide si measureMode está ON, mueve el gráfico si está OFF -----
+function isOnPriceAxis(x){
+  if(!lastLayout) return false;
+  const w = canvas.width / devicePixelRatio;
+  return x > w - lastLayout.pad.right;
+}
+
+function handlePointerDown(e){
+  if(e.touches && e.touches.length === 2){ startPinch(e); return; }
+  const pos = getCanvasPos(e);
+  pointer.dragging = true;
+  pointer.startX = pos.x; pointer.startY = pos.y;
+  if(!measureMode && isOnPriceAxis(pos.x)){
+    pointer.mode = 'yzoom';
+    yZoom.startY = pos.y;
+    yZoom.startFactor = yZoom.factor;
+  } else if(measureMode){
+    pointer.mode = 'measure';
+    measure.active = true;
+    measure.moved = false;
+    measure.startX = pos.x; measure.startY = pos.y;
+    measure.curX = pos.x; measure.curY = pos.y;
+  } else {
+    pointer.mode = 'pan';
+    pointer.startOffset = view.offset;
+    pointer.startYPanFrac = yPanFrac;
+  }
+}
+
+function handlePointerMove(e, isTouch){
+  if(e.touches && e.touches.length === 2){
+    if(isTouch) e.preventDefault();
+    updatePinch(e);
+    return;
+  }
+  if(!pointer.dragging) return;
+  const pos = getCanvasPos(e);
+  const dx = pos.x - pointer.startX;
+  const dy = pos.y - pointer.startY;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+
+  if(pointer.mode === 'measure'){
+    if(dist > DRAG_THRESHOLD){
+      if(isTouch) e.preventDefault();
+      measure.moved = true;
+      measure.has = true;
+      measure.curX = pos.x; measure.curY = pos.y;
+      draw();
+      updateClearBtn();
+    }
+  } else if(pointer.mode === 'pan'){
+    if(dist > 3){
+      if(isTouch) e.preventDefault();
+      const candleW = lastLayout ? lastLayout.candleW : 6;
+      const deltaCandles = Math.round(dx / candleW);
+      view.offset = pointer.startOffset + deltaCandles;
+      clampView();
+      updateLiveBtn();
+      // arrastrar hacia abajo = ver precios más altos arriba (el contenido "sigue" al dedo)
+      const innerH = lastLayout ? lastLayout.innerH : 300;
+      yPanFrac = pointer.startYPanFrac + (dy / innerH);
+      draw();
+    }
+  } else if(pointer.mode === 'yzoom'){
+    if(isTouch) e.preventDefault();
+    // arrastrar hacia arriba = acercar (achica el rango) · hacia abajo = alejar (agranda el rango)
+    const dyFromStart = pos.y - yZoom.startY;
+    let factor = yZoom.startFactor * Math.pow(1.0075, dyFromStart);
+    factor = Math.max(Y_ZOOM_MIN, Math.min(Y_ZOOM_MAX, factor));
+    yZoom.factor = factor;
+    draw();
+  }
+}
+
+function handlePointerUp(){
+  if(pointer.mode === 'measure'){
+    if(measure.active && !measure.moved){
+      // fue un toque/click simple sin arrastre real -> deseleccionar medición existente
+      clearMeasure();
+    }
+    measure.active = false;
+  }
+  pointer.dragging = false;
+  pointer.mode = null;
+}
+
+// ----- pellizco de dos dedos: zoom -----
+function startPinch(e){
+  pinch.active = true;
+  pointer.dragging = false; // cancela cualquier pan/medición en curso
+  const [t1, t2] = e.touches;
+  pinch.startDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+  pinch.startCount = view.count;
+}
+
+function updatePinch(e){
+  if(!pinch.active || e.touches.length < 2) return;
+  const [t1, t2] = e.touches;
+  const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+  const scale = dist / (pinch.startDist || 1);
+  const total = candles.length || 1;
+  let newCount = Math.round(pinch.startCount / scale);
+  newCount = Math.max(MIN_COUNT, Math.min(total, newCount));
+  view.count = newCount;
+  clampView();
+  draw();
+}
+
+// ----- rueda del mouse (desktop): zoom -----
+function handleWheel(e){
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 0.85 : 1/0.85; // arriba = acercar, abajo = alejar
+  const total = candles.length || 1;
+  let newCount = Math.round(view.count * factor);
+  newCount = Math.max(MIN_COUNT, Math.min(total, newCount));
+  view.count = newCount;
+  clampView();
+  draw();
+}
+
+canvas.addEventListener('mousedown', handlePointerDown);
+canvas.addEventListener('mousemove', e => handlePointerMove(e, false));
+window.addEventListener('mouseup', handlePointerUp);
+canvas.addEventListener('dblclick', (e) => {
+  const pos = getCanvasPos(e);
+  if(isOnPriceAxis(pos.x)){ yZoom.factor = 1; yPanFrac = 0; draw(); return; }
+  clearMeasure(); goLive();
+});
+canvas.addEventListener('wheel', handleWheel, {passive:false});
+
+// passive:true en touchstart para no interferir con el scroll nativo todavía
+canvas.addEventListener('touchstart', e => {
+  if(e.touches.length === 2){ startPinch(e); }
+  else { handlePointerDown(e); }
+}, {passive:true});
+// passive:false en touchmove porque ahí decidimos si bloquear el scroll o no
+canvas.addEventListener('touchmove', e => handlePointerMove(e, true), {passive:false});
+canvas.addEventListener('touchend', e => {
+  if(e.touches.length < 2) pinch.active = false;
+  if(e.touches.length === 0) handlePointerUp();
+}, {passive:false});
+
+document.getElementById('clearMeasureBtn').addEventListener('click', clearMeasure);
+document.getElementById('liveBtn').addEventListener('click', goLive);
+
+renderTfBar();
+renderWatchlist();
+fetchCandles();
+fetchWatchlist();
+fetchTwelveDataWatchlist();
+setInterval(fetchCandles, 15000);
+setInterval(fetchWatchlist, 10000);
+setInterval(fetchTwelveDataWatchlist, 60000); // Twelve Data: cada 60s para no gastar créditos de más
+resize();
+</script>
+
+</body>
+</html>
