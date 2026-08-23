@@ -1056,7 +1056,57 @@ setInterval(fetchCandles, 15000);
 setInterval(fetchWatchlist, 10000);
 setInterval(fetchTwelveDataWatchlist, 60000); // Twelve Data: cada 60s para no gastar créditos de más
 resize();
+ // ====== SMT FIN DE SEMANA: PAXG vs último cierre de XAUUSD ======
+// Compara cuánto se movió PAXG desde que el oro real dejó de cotizar.
+const SMT_GAP_ALERT = 0.5;      // % de despegue para marcar señal
+const SMT_REFRESH_MS = 120000;  // 2 min
+let smtGap = null, smtStale = 0, smtMsg = 'calculando...';
+
+function tdToMs(s){ return Date.parse(s.replace(' ','T') + 'Z'); }
+
+async function updateSmtGap(){
+  try{
+    // 1) última vela disponible del oro real = el momento en que se congeló
+    const r = await fetch(`https://api.twelvedata.com/time_series?symbol=XAU%2FUSD&interval=1h&outputsize=5&apikey=${TWELVE_DATA_KEY}`);
+    const d = await r.json();
+    if(!d.values || !d.values.length) throw new Error(d.message || 'sin datos XAU');
+    const anchorMs = tdToMs(d.values[0].datetime);
+
+    // 2) precio de PAXG en ese mismo momento, y ahora
+    const rk = await fetch('https://data-api.binance.vision/api/v3/klines?symbol=PAXGUSDT&interval=1h&limit=300');
+    const kl = await rk.json();
+    let anchor = null;
+    for(const k of kl){ if(k[0] <= anchorMs) anchor = parseFloat(k[4]); }
+    const ahora = parseFloat(kl[kl.length-1][4]);
+    if(!anchor || !ahora) throw new Error('sin ancla PAXG');
+
+    smtGap = ((ahora - anchor) / anchor) * 100;
+    smtStale = (Date.now() - anchorMs) / 3600000;
+  }catch(e){
+    smtMsg = e.message || 'error';
+    smtGap = null;
+  }
+  updateSmtPanel();
+}
+
+// reemplaza el panel viejo (comparaba cambios de 24h, inútil con el oro cerrado)
+function updateSmtPanel(){
+  const el = document.getElementById('smtPanel');
+  if(!el) return;
+  if(smtGap === null){ el.textContent = 'SMT PAXG/XAU: ' + smtMsg; return; }
+  const cerrado = smtStale > 2;
+  const fmt = (smtGap >= 0 ? '+' : '') + smtGap.toFixed(2) + '%';
+  const fuerte = Math.abs(smtGap) >= SMT_GAP_ALERT;
+  const color = smtGap >= 0 ? 'var(--teal)' : 'var(--red)';
+  el.innerHTML = `PAXG desde cierre XAU: <b style="color:${color}">${fmt}</b>` +
+    ` · oro ${cerrado ? 'cerrado hace ' + smtStale.toFixed(0) + 'h' : 'abierto'}` +
+    (fuerte ? ' <b style="color:var(--accent)">⚡ gap</b>' : '');
+}
+
+updateSmtGap();
+setInterval(updateSmtGap, SMT_REFRESH_MS); 
 </script>
+  
 
 </body>
 </html>
