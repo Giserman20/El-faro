@@ -1060,10 +1060,8 @@ resize();
 // Compara cuánto se movió PAXG desde que el oro real dejó de cotizar.
 const SMT_GAP_ALERT = 0.5;      // % de despegue para marcar señal
 const SMT_REFRESH_MS = 120000;  // 2 min
-let smtGap = null, smtStale = 0, smtMsg = 'calculando...';
-
+var smtGap = null, smtStale = 0, smtMsg = 'calculando...'
 function tdToMs(s){ return Date.parse(s.replace(' ','T') + 'Z'); }
-
 async function updateSmtGap(){
   try{
     // 1) última vela disponible del oro real = el momento en que se congeló
@@ -1093,7 +1091,7 @@ async function updateSmtGap(){
 function updateSmtPanel(){
   const el = document.getElementById('smtPanel');
   if(!el) return;
-  if(smtGap === null){ el.textContent = 'SMT PAXG/XAU: ' + smtMsg; return; }
+  if(smtGap = null){ el.textContent = 'SMT PAXG/XAU: ' + smtMsg; return; }
   const cerrado = smtStale > 2;
   const fmt = (smtGap >= 0 ? '+' : '') + smtGap.toFixed(2) + '%';
   const fuerte = Math.abs(smtGap) >= SMT_GAP_ALERT;
